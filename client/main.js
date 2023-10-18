@@ -1,12 +1,37 @@
 const btn = document.getElementById("connect");
+const iceCandidate = []
+  const config = [
+    {
+      urls: "stun:stun.l.google.com:19302",
+    }
+]
+
+const peerConnection = new RTCPeerConnection({ iceServers: config});
+peerConnection.onicecandidate = (event) => {
+  if (event.candidate) {
+     iceCandidate.push(event.candidate)
+     console.log(iceCandidate)
+   
+  }
+}
+const dc = peerConnection.createDataChannel("data-channel", { reliable: true})
+dc.onopen = e =>  {
+    console.log("Data Channel Opened")
+}
+dc.onmessage = e => console.log("Got Message ", e.data)
+
 btn.addEventListener("click", async function () {
   console.log("trying to start connection");
-  const peerConnection = new RTCPeerConnection();
+  try {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    sendOfferAndIce(offer, iceCandidate)
+  } catch(error) {
+    console.log("Error Creating a webrtc connection", error)
+  }
+});
 
-  const offer = await peerConnection.createOffer();
-
-  await peerConnection.setLocalDescription(offer);
-
+const sendOfferAndIce = (offer, iceCandidates) => {
   fetch("/connect", {
     method: "POST",
     headers: {
@@ -15,13 +40,14 @@ btn.addEventListener("click", async function () {
     body: JSON.stringify(offer),
   })
     .then((res) => {
-      console.log(res);
-      return JSON.parse(res);
+      return res.json();
     })
     .then((ans) => {
       peerConnection.setRemoteDescription(ans);
     })
-    .catch((err) => {
+   .catch((err) => {
       console.log("Error Sending in SDP", err);
     });
-});
+}
+
+
