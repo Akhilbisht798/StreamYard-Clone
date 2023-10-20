@@ -54,39 +54,15 @@ func connectWebrtc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Data Channel
-	//peerConnection.OnDataChannel(func(ch *webrtc.DataChannel) {
-	//	dc = ch
-	//	ch.OnOpen(func() {
-	//		fmt.Println("Data Channel Opened")
-	//	})
-	//})
-	dataChannel, errDataChannel := peerConnection.CreateDataChannel("data-channel", nil)
-	if errDataChannel != nil {
-		fmt.Printf("Error Creating Data Channel: %v\n", errDataChannel)
-		http.Error(w, "Error Creating Data Channel", http.StatusInternalServerError)
-		return
-	}
-
-	dataChannel.OnOpen(func() {
-		fmt.Println("Data Channel Opened")
-		dataChannel.SendText("Hello Client") // You can also send data here if needed.
+	peerConnection.OnDataChannel(func(ch *webrtc.DataChannel) {
+		dc = ch
+		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+			fmt.Println("Message From Client" + string(msg.Data))
+		})
+		dc.OnOpen(func() {
+			fmt.Println("Data Channel from client is opened")
+		})
 	})
-	//err := peerConnection.CreateDataChannel("data-channel", nil)
-	//if dc != nil {
-	//	fmt.Printf("Error Creating Data Channel: %v\n", dc)
-	//	http.Error(w, "Error Creating Data Channel", http.StatusInternalServerError)
-	//	return
-	//}
-	//dc.OnOpen(func() {
-	//	fmt.Println("Data Channel Opened")
-	//	dc.SendText("Hello Client")
-	//})
-	//eerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
-	//       dc = dataChannel
-	//       dc.OnOpen(func() {
-	//       	fmt.Println("Data Channel Opened")
-	//       })
-	//)
 
 	// Exchanging of sdp
 	setRemoteErr := peerConnection.SetRemoteDescription(offer)
