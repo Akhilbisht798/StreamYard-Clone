@@ -6,6 +6,21 @@ const btn = document.getElementById("connect");
 ]
 
 const peerConnection = new RTCPeerConnection({ iceServers: config});
+getUserMedia()
+function getUserMedia() {
+  navigator.mediaDevices.getUserMedia({ video: true })
+  .then(function (stream) {
+     stream.getTracks().forEach(track => {
+       peerConnection.addTrack(track)
+       console.log("Track added")
+     })
+  })
+   .catch(function (error) {
+     console.error('Error accessing user media: ', error);
+   });
+
+}
+
 peerConnection.onicecandidate = (event) => {
   if (event.candidate) {
     console.log("NEW SDP FOUND: ", peerConnection.localDescription)

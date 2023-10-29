@@ -17,6 +17,36 @@ type WebRtcData struct {
 }
 
 func main() {
+	// Webrtc implementation
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"}, // STUN server for NAT traversal
+			},
+		},
+	}
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(&webrtc.MediaEngine{}))
+
+	var errPeerConnection error
+	peerConnection, errPeerConnection = api.NewPeerConnection(config)
+	if errPeerConnection != nil {
+		fmt.Println("Error in creating peerConnection")
+		return
+	}
+	// Data Channel
+	peerConnection.OnDataChannel(func(ch *webrtc.DataChannel) {
+		dc = ch
+		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+			fmt.Println("Message From Client" + string(msg.Data))
+		})
+		dc.OnOpen(func() {
+			fmt.Println("Data Channel from client is opened")
+		})
+	})
+	peerConnection.OnTrack(func(tr *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
+		fmt.Println("Recived Stream from web")
+	})
 
 	var err error
 	mux := http.NewServeMux()
@@ -36,33 +66,11 @@ func main() {
 
 func connectWebrtc(w http.ResponseWriter, r *http.Request) {
 	var offer webrtc.SessionDescription
-
 	err := json.NewDecoder(r.Body).Decode(&offer)
 	if err != nil {
 		http.Error(w, "Invalid SDP offer", http.StatusBadRequest)
 	}
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&webrtc.MediaEngine{}))
 	fmt.Println(offer)
-
-	// PeerConnection
-	var errPeerConnection error
-	peerConnection, errPeerConnection = api.NewPeerConnection(webrtc.Configuration{})
-	if errPeerConnection != nil {
-		fmt.Printf("Error Creating a PeerConnection: %s \n", err)
-		http.Error(w, "Error in creating PeerConnection", http.StatusInternalServerError)
-		return
-	}
-
-	// Data Channel
-	peerConnection.OnDataChannel(func(ch *webrtc.DataChannel) {
-		dc = ch
-		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
-			fmt.Println("Message From Client" + string(msg.Data))
-		})
-		dc.OnOpen(func() {
-			fmt.Println("Data Channel from client is opened")
-		})
-	})
 
 	// Exchanging of sdp
 	setRemoteErr := peerConnection.SetRemoteDescription(offer)
